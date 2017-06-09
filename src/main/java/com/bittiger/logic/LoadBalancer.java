@@ -3,25 +3,20 @@ package com.bittiger.logic;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.easyrules.api.RulesEngine;
-import org.easyrules.core.RulesEngineBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.bittiger.client.ClientEmulator;
-import com.bittiger.logic.rules.AvailabilityNotEnoughRule;
 
 public class LoadBalancer {
 	private List<Server> readQueue = new ArrayList<Server>();
 	private Server writeQueue = null;
 	private List<Server> candidateQueue = new ArrayList<Server>();
 	private int nextReadServer = 0;
-	private ClientEmulator c;
 	private static transient final Logger LOG = LoggerFactory
 			.getLogger(LoadBalancer.class);
 
 	public LoadBalancer(ClientEmulator ce) {
-		this.c = ce;
 		writeQueue = new Server(ce.getTpcw().writeQueue);
 		for (int i = 0; i < ce.getTpcw().readQueue.length; i++) {
 			readQueue.add(new Server(ce.getTpcw().readQueue[i]));
@@ -61,17 +56,6 @@ public class LoadBalancer {
 	// However, candidateQueue is only called by Executor.
 	public List<Server> getCandidateQueue() {
 		return candidateQueue;
-	}
-
-	public synchronized void detectFailure() {
-		/**
-		 * Create a rules engine and register the business rule
-		 */
-		RulesEngine rulesEngine = RulesEngineBuilder.aNewRulesEngine().build();
-		AvailabilityNotEnoughRule availabilityRule = new AvailabilityNotEnoughRule();
-		availabilityRule.setInput(c, readQueue.size());
-		rulesEngine.registerRule(availabilityRule);
-		rulesEngine.fireRules();
 	}
 
 }

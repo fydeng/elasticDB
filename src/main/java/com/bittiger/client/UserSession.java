@@ -116,33 +116,17 @@ public class UserSession extends Thread {
 	}
 
 	public Connection getNextReadConnection(LoadBalancer loadBalancer) {
-		Server server = null;
-		Connection connection = null;
-		while (connection == null) {
-			int tryTime = 0;
-			server = loadBalancer.getNextReadServer();
-			while (connection == null && tryTime++ < Utilities.retryTimes) {
-				try {
-					Class.forName("com.mysql.jdbc.Driver").newInstance();
-					connection = (Connection) DriverManager.getConnection(
-							Utilities.getUrl(server),
-							client.getTpcw().username,
-							client.getTpcw().password);
-					connection.setAutoCommit(true);
-				} catch (Exception e) {
-					LOG.error(e.toString());
-				}
-			}
-			if (connection == null) {
-				LOG.error(server.getIp() + " is down. ");
-				loadBalancer.getReadQueue().remove(server);
-				loadBalancer.detectFailure();
-			} else {
-//				LOG.debug("choose read server as " + server.getIp());
-				return connection;
-			}
+		try {
+			Class.forName("com.mysql.jdbc.Driver").newInstance();
+			Server server = loadBalancer.getNextReadServer();
+			Connection connection = (Connection) DriverManager.getConnection(
+					Utilities.getUrl(server), client.getTpcw().username,
+					client.getTpcw().password);
+			connection.setAutoCommit(true);
+			return connection;
+		} catch (Exception ex) {
+			throw new RuntimeException(ex);
 		}
-		return null;
 	}
 
 	public void run() {

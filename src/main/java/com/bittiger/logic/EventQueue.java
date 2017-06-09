@@ -22,12 +22,6 @@ public class EventQueue {
 
 	public synchronized void put(ActionType actionType) {
 		switch (actionType) {
-		case AvailNotEnoughAddServer:
-			if (!queue.contains(ActionType.AvailNotEnoughAddServer)
-					&& !queue.contains(ActionType.BadPerformanceAddServer)) {
-				queue.offer(actionType);
-			}
-			break;
 		case BadPerformanceAddServer:
 		case GoodPerformanceRemoveServer:
 			// we ignore the performance request if there is anything going on

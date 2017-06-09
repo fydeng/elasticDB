@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import com.bittiger.logic.ActionType;
 import com.bittiger.logic.Controller;
-import com.bittiger.logic.Destroyer;
 import com.bittiger.logic.EventQueue;
 import com.bittiger.logic.Executor;
 import com.bittiger.logic.LoadBalancer;
@@ -26,8 +25,6 @@ public class ClientEmulator {
 
 	@Option(name = "-c", usage = "enable controller")
 	private boolean enableController;
-	@Option(name = "-d", usage = "enable destroyer")
-	private boolean enableDestroyer;
 	// receives other command line parameters than options
 	@Argument
 	private List<String> arguments = new ArrayList<String>();
@@ -38,7 +35,6 @@ public class ClientEmulator {
 	private Monitor monitor;
 	private Controller controller;
 	private Executor executor;
-	private Destroyer destroyer;
 	private LoadBalancer loadBalancer;
 	OpenSystemTicketProducer producer;
 	EventQueue eventQueue = null;
@@ -90,9 +86,6 @@ public class ClientEmulator {
 		if (enableController)
 			LOG.info("-c flag is set");
 
-		if (enableDestroyer)
-			LOG.info("-d flag is set");
-
 		long warmup = tpcw.warmup;
 		long mi = tpcw.mi;
 		long warmdown = tpcw.warmdown;
@@ -138,10 +131,6 @@ public class ClientEmulator {
 			timer.schedule(this.controller, warmup, tpcw.interval);
 			this.executor = new Executor(this);
 			this.executor.start();
-			if(enableDestroyer){
-				destroyer = new Destroyer(this);
-				destroyer.start();
-			}
 		}
 		this.loadBalancer = new LoadBalancer(this);
 		LOG.info("Client starts......");
@@ -201,10 +190,6 @@ public class ClientEmulator {
 			try {
 				executor.join();
 				LOG.info("Executor joins");
-				if(enableDestroyer){
-					destroyer.join();
-					LOG.info("Destroyer joins");
-				}
 			} catch (java.lang.InterruptedException ie) {
 				LOG.error("Executor/Destroyer has been interrupted.");
 			}
