@@ -252,5 +252,4 @@ public class ClientEmulator {
 		ClientEmulator client = new ClientEmulator();
 		client.start(args);
 	}
-
 }
