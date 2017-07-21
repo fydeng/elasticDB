@@ -25,7 +25,7 @@ public class UserSession extends Thread {
 	private Connection writeConn;
 
 	private static transient final Logger LOG = LoggerFactory
-			.getLogger(ClientEmulator.class);
+			.getLogger(UserSession.class);
 
 	public UserSession(int id, ClientEmulator client,
 			BlockingQueue<Integer> bQueue) {

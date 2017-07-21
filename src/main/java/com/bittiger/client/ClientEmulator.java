@@ -148,7 +148,7 @@ public class ClientEmulator {
 					sessions[i].notifyThread();
 				}
 			} else if (diffWL < 0) {
-				for (int i = (currNumSessions - 1); i > workloads[currWLInx]; i--) {
+				for (int i = (currNumSessions - 1); i >= workloads[currWLInx]; i--) {
 					sessions[i].holdThread();
 				}
 			}
