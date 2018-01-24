@@ -30,7 +30,7 @@ public class Executor extends Thread {
 			}
 			try {
 				LOG.info(actionType + " request received");
-				if (actionType == ActionType.BadPerformanceAddServer) {
+				if (actionType == ActionType.BadPerformanceAddServer || actionType == ActionType.AvailNotEnoughAddServer) {
 					if (c.getLoadBalancer().getCandidateQueue().size() == 0) {
 						LOG.info("CandidateQueue size is 0, skip adding server");
 					} else {
@@ -50,6 +50,10 @@ public class Executor extends Thread {
 								master.getIp());
 						c.getLoadBalancer().addServer(target);
 						LOG.info("kick in " + target.getIp() + " done ");
+						if (actionType == ActionType.AvailNotEnoughAddServer) {
+							LOG.info("server added for availability not enough");
+							this.c.clearFailCount();
+						}
 					}
 				} else if (actionType == ActionType.GoodPerformanceRemoveServer) {
 					if (c.getLoadBalancer().getReadQueue().size() == Utilities.minimumSlave) {

@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.bittiger.client.ClientEmulator;
+import java.util.Random;
 
 public class LoadBalancer {
 	private List<Server> readQueue = new ArrayList<Server>();
@@ -15,7 +16,8 @@ public class LoadBalancer {
 	private int nextReadServer = 0;
 	private static transient final Logger LOG = LoggerFactory
 			.getLogger(LoadBalancer.class);
-
+	private boolean randomLoadBalancer = false;
+	
 	public LoadBalancer(ClientEmulator ce) {
 		writeQueue = new Server(ce.getTpcw().writeQueue);
 		for (int i = 0; i < ce.getTpcw().readQueue.length; i++) {
@@ -24,6 +26,8 @@ public class LoadBalancer {
 		for (int i = 0; i < ce.getTpcw().candidateQueue.length; i++) {
 			candidateQueue.add(new Server(ce.getTpcw().candidateQueue[i]));
 		}
+		
+		this.randomLoadBalancer = ce.getRandomLoadBalancer();
 	}
 
 	// there is only one server in the writequeue.
@@ -32,8 +36,16 @@ public class LoadBalancer {
 	}
 
 	public synchronized Server getNextReadServer() {
-		nextReadServer = (nextReadServer + 1) % readQueue.size();
+		if (!randomLoadBalancer) {
+			nextReadServer = (nextReadServer + 1) % readQueue.size();
+		} else {
+			Random rand = new Random();
+			nextReadServer = rand.nextInt(readQueue.size());
+		}
+		
 		Server server = readQueue.get(nextReadServer);
+		
+		LOG.debug("nextReadServer is " + nextReadServer);
 		LOG.debug("choose read server as " + server.getIp());
 		return server;
 	}
@@ -48,6 +60,12 @@ public class LoadBalancer {
 		return server;
 	}
 
+	public synchronized Server removeDestroyedServer() {
+		Server server = readQueue.remove(1);
+		candidateQueue.add(server);
+		return server;
+	}
+	
 	public synchronized List<Server> getReadQueue() {
 		return readQueue;
 	}

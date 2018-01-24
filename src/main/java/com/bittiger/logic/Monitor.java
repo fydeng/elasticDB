@@ -15,6 +15,8 @@ import com.bittiger.client.Utilities;
 import com.bittiger.querypool.CleanStatsQuery;
 import com.bittiger.querypool.StatsQuery;
 
+//SLA requirement is between 200 to 400 ms
+
 /**
  * We do not need strong consistency for stats in the monitor
  *

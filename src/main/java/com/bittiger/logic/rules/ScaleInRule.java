@@ -9,6 +9,8 @@ import com.bittiger.client.Utilities;
 import com.bittiger.logic.ActionType;
 import com.bittiger.logic.Controller;
 
+// SLA requirement is between 200 ms to 400 ms
+
 @Rule(name = "ScaleInRule", description = "Check if we need to remove server for better resource usage")
 public class ScaleInRule {
 

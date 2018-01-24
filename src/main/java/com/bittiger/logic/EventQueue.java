@@ -30,6 +30,15 @@ public class EventQueue {
 				queue.offer(actionType);
 			}
 			break;
+		case AvailNotEnoughAddServer:
+			if (!queue.isEmpty()) {
+				if (queue.peek() == ActionType.GoodPerformanceRemoveServer) {
+					queue.poll();
+					queue.offer(actionType);
+				} else {
+					break;
+				}
+			}
 		case NoOp:
 			queue.offer(actionType);
 			break;

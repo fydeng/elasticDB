@@ -10,9 +10,11 @@ import java.sql.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.bittiger.logic.ActionType;
 import com.bittiger.logic.LoadBalancer;
 import com.bittiger.logic.Server;
 import com.bittiger.querypool.QueryMetaData;
+import com.bittiger.client.Utilities;
 
 public class UserSession extends Thread {
 	private TPCWProperties tpcw = null;
@@ -53,6 +55,7 @@ public class UserSession extends Thread {
 	public synchronized void holdThread() {
 		suspendThread = true;
 	}
+	
 
 	private String computeNextSql(double rwratio, double[] read, double[] write) {
 		String sql = "";
@@ -149,6 +152,7 @@ public class UserSession extends Thread {
 						tpcw.write);
 				Connection connection = getNextConnection(queryclass);
 				String classname = "com.bittiger.querypool." + queryclass;
+				//factory pattern: initialize an object from a string
 				QueryMetaData query = (QueryMetaData) Class.forName(classname)
 						.newInstance();
 				String command = query.getQueryStr();
@@ -171,6 +175,13 @@ public class UserSession extends Thread {
 					stmt.close();
 				}
 			} catch (Exception ex) {
+				client.increaseFailCount();
+				if (client.getFailCount() >= Utilities.retryTimes) {
+					LOG.debug("no connection for " + Utilities.retryTimes + " times, fire Availability rule");
+					client.getEventQueue().put(ActionType.AvailNotEnoughAddServer);
+					Server s = client.getLoadBalancer().removeDestroyedServer();
+					LOG.debug("Availability not enough rule has been fired, destroyed server " + s.getIp() + " is removed from load balancer");
+				}
 				LOG.error("Error while running session: " + ex.getMessage());
 			}
 		}

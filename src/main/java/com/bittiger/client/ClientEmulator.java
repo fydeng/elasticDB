@@ -1,11 +1,8 @@
 package com.bittiger.client;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Timer;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.*;
+import java.io.*;
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
@@ -20,11 +17,19 @@ import com.bittiger.logic.EventQueue;
 import com.bittiger.logic.Executor;
 import com.bittiger.logic.LoadBalancer;
 import com.bittiger.logic.Monitor;
+import com.bittiger.logic.Destroyer;
 
 public class ClientEmulator {
-
+	
 	@Option(name = "-c", usage = "enable controller")
 	private boolean enableController;
+	
+	@Option(name = "-r", usage = "random server in load balancer")
+	private boolean randomLoadBalancer;
+	
+	@Option(name = "-d", usage = "enable destroyer")
+	private boolean enableDestroyer;
+	
 	// receives other command line parameters than options
 	@Argument
 	private List<String> arguments = new ArrayList<String>();
@@ -39,6 +44,7 @@ public class ClientEmulator {
 	OpenSystemTicketProducer producer;
 	EventQueue eventQueue = null;
 	private long startTime;
+	private int failCount = 0;
 
 	private static transient final Logger LOG = LoggerFactory
 			.getLogger(ClientEmulator.class);
@@ -53,6 +59,10 @@ public class ClientEmulator {
 		numOfRunningThreads++;
 	}
 
+	public synchronized void increaseFailCount() {
+		failCount += 1;
+	}
+	
 	private synchronized void setEndOfSimulation() {
 		endOfSimulation = true;
 		LOG.info("Trigger ClientEmulator.isEndOfSimulation()= "
@@ -85,13 +95,20 @@ public class ClientEmulator {
 
 		if (enableController)
 			LOG.info("-c flag is set");
+		
+		if (randomLoadBalancer)
+			LOG.info("-r flag is set");
 
+		if (enableDestroyer)
+			LOG.info("-d flag is set");
+		
 		long warmup = tpcw.warmup;
 		long mi = tpcw.mi;
 		long warmdown = tpcw.warmdown;
 		this.startTime = System.currentTimeMillis();
 		int maxNumSessions = 0;
 		int workloads[] = tpcw.workloads;
+		int destroyerSleepInterval = tpcw.destroyerSleepInterval;
 		for (int i = 0; i < workloads.length; i++) {
 			if (workloads[i] > maxNumSessions) {
 				maxNumSessions = workloads[i];
@@ -100,7 +117,7 @@ public class ClientEmulator {
 		LOG.info("The maximum is : " + maxNumSessions);
 		BlockingQueue<Integer> bQueue = new LinkedBlockingQueue<Integer>();
 
-		// Each usersession is a user
+		// Each user session is a user
 		UserSession[] sessions = new UserSession[maxNumSessions];
 		for (int i = 0; i < maxNumSessions; i++) {
 			sessions[i] = new UserSession(i, this, bQueue);
@@ -124,13 +141,19 @@ public class ClientEmulator {
 		
 		this.monitor = new Monitor(this);
 		this.monitor.init();
-		Timer timer = null;
+		Timer timerController = null;
+		Timer timerDestroyer = null;
 		if (enableController) {
 			this.controller = new Controller(this);
-			timer = new Timer();
-			timer.schedule(this.controller, warmup, tpcw.interval);
+			timerController = new Timer();
+			timerController.schedule(this.controller, warmup, tpcw.interval);
 			this.executor = new Executor(this);
 			this.executor.start();
+		}
+		if (enableDestroyer) {
+			Destroyer destroyer = new Destroyer(this);
+			timerDestroyer = new Timer();
+			timerDestroyer.schedule(destroyer, destroyerSleepInterval, tpcw.interval);
 		}
 		this.loadBalancer = new LoadBalancer(this);
 		LOG.info("Client starts......");
@@ -185,7 +208,7 @@ public class ClientEmulator {
 			}
 		}
 		if (enableController) {
-			timer.cancel();
+			timerController.cancel();
 			this.eventQueue.put(ActionType.NoOp);
 			try {
 				executor.join();
@@ -193,6 +216,9 @@ public class ClientEmulator {
 			} catch (java.lang.InterruptedException ie) {
 				LOG.error("Executor/Destroyer has been interrupted.");
 			}
+		}
+		if (enableDestroyer) {
+			timerDestroyer.cancel();
 		}
 		this.monitor.close();
 		LOG.info("Done\n");
@@ -231,6 +257,10 @@ public class ClientEmulator {
 		this.startTime = startTime;
 	}
 
+	public boolean getRandomLoadBalancer() {
+		return randomLoadBalancer;
+	}
+	
 	public LoadBalancer getLoadBalancer() {
 		return loadBalancer;
 	}
@@ -247,6 +277,14 @@ public class ClientEmulator {
 		this.eventQueue = eventQueue;
 	}
 
+	public int getFailCount() {
+		return failCount;
+	}
+	
+	public void clearFailCount() {
+		failCount = 0;
+	}
+	
 	public static void main(String[] args) throws IOException,
 			InterruptedException {
 		ClientEmulator client = new ClientEmulator();
